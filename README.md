@@ -37,3 +37,7 @@
 <!-- COMMIT_INFO_START -->
 <!-- COMMIT_INFO_END -->
 
+
+---
+**Last commit:** fa61b2f - Merge pull request #14 from artem240992/второйЭтап
+*(auto-updated)*
