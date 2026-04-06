@@ -22,23 +22,16 @@ jobs:
         run: |
           echo "hash=$(git log -1 --format='%h')" >> $GITHUB_OUTPUT
           echo "message=$(git log -1 --format='%s')" >> $GITHUB_OUTPUT
-          echo "author=$(git log -1 --format='%an')" >> $GITHUB_OUTPUT
-          echo "date=$(git log -1 --format='%ad' --date=short)" >> $GITHUB_OUTPUT
 
-      - name: Insert commit info into README.md
-        run: | # Создаём новый блок с информацией о коммите
+      - name: Append commit info to README.md
+        run: |
+          # Добавляем отступ (пустая строка) и информацию о коммите
+          echo "" >> README.md                     # отступ перед блоком
+          echo "**Commit:** \`${{ steps.commit.outputs.hash }}\`" >> README.md
+          echo "" >> README.md                     # отступ между хешем и сообщением
+          echo "${{ steps.commit.outputs.message }}" >> README.md
           echo "" >> README.md
-          echo "---" >> README.md
-          echo "**Last commit:** $'\n'-${{ steps.commit.outputs.hash }} - ${{ steps.commit.outputs.message }}" >> README.md
           echo "*(auto-updated)*" >> README.md
-      #- name: Append commit info to README.md
-        #run: |
-         #   echo "" >> README.md
-          #  echo "---" >> README.md
-           # echo "**Last commit:** ${{ steps.commit.outputs.hash }} - ${{ steps.commit.outputs.message }}" >> README.md
-            #echo "*(auto-updated)*" >> README.md
-          # Заменяем текст между маркерами в README.md
-         #perl -i -pe 'BEGIN{undef $/;} s/<!-- COMMIT_INFO_START -->.*?<!-- COMMIT_INFO_END -->/'"$NEW_BLOCK"'/sg' README.md
 
       - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v5
