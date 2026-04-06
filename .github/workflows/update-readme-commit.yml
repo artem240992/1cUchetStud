@@ -1,0 +1,52 @@
+name: Update README with last commit info
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'   # не запускаться при коммитах, которые меняют только README
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get last commit info
+        id: commit
+        run: |
+          echo "hash=$(git log -1 --format='%h')" >> $GITHUB_OUTPUT
+          echo "message=$(git log -1 --format='%s')" >> $GITHUB_OUTPUT
+          echo "author=$(git log -1 --format='%an')" >> $GITHUB_OUTPUT
+          echo "date=$(git log -1 --format='%ad' --date=short)" >> $GITHUB_OUTPUT
+
+      - name: Insert commit info into README.md
+       # run: |
+          # Создаём новый блок с информацией о коммите
+         # NEW_BLOCK="<!-- COMMIT_INFO_START -->"
+         # NEW_BLOCK+=$'\n'
+         # NEW_BLOCK+="**Последний коммит:**  \n"
+         # NEW_BLOCK+="- Хеш: \`${{ steps.commit.outputs.hash }}\`  \n"
+         # NEW_BLOCK+="- Сообщение: ${{ steps.commit.outputs.message }}  \n"
+         # NEW_BLOCK+="- Автор: ${{ steps.commit.outputs.author }}  \n"
+         # NEW_BLOCK+="- Дата: ${{ steps.commit.outputs.date }}  \n"
+         # NEW_BLOCK+="<!-- COMMIT_INFO_END -->"
+        # - name: Append commit info to README.md
+        run: |
+            echo "" >> README.md
+            echo "---" >> README.md
+            echo "**Last commit:** ${{ steps.commit.outputs.hash }} - ${{ steps.commit.outputs.message }}" >> README.md
+            echo "*(auto-updated)*" >> README.md
+          # Заменяем текст между маркерами в README.md
+         # perl -i -pe 'BEGIN{undef $/;} s/<!-- COMMIT_INFO_START -->.*?<!-- COMMIT_INFO_END -->/'"$NEW_BLOCK"'/sg' README.md
+
+      - name: Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs: update README with last commit info [skip ci]"
+          file_pattern: README.md
