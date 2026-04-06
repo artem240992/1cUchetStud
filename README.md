@@ -37,6 +37,3 @@
 <!-- COMMIT_INFO_START -->
 <!-- COMMIT_INFO_END -->
 
----
-**Last commit:** d2ed9b4 - Merge pull request #11 from artem240992/тест2
-*(auto-updated)*
