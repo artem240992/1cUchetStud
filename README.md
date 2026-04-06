@@ -1,3 +1,8 @@
+-------Merge pull request #17 from artem240992/1.8.76TЕ--------
+
+
+1.8.76T
+
 -------Update update-readme-commit.yml--------
 
 -------Обновление 1.8.76--------
