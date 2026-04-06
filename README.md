@@ -38,22 +38,3 @@
 
 <!-- COMMIT_INFO_START -->
 <!-- COMMIT_INFO_END -->
-
-
----
-**Last commit:** fa61b2f - Merge pull request #14 from artem240992/второйЭтап
-*(auto-updated)*
-
----
-**Last commit:** $'\n'-b4b1f9e - Update update-readme-commit.yml
-*(auto-updated)*
-
----
-**Last commit:** $'\n'-66daa32 - Merge pull request #15 from artem240992/ТретийЭтап
-*(auto-updated)*
-
-**Commit:** `7c664e6`
-
-Merge pull request #16 from artem240992/ДоработкаФайла
-
-*(auto-updated)*
