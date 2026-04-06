@@ -29,7 +29,7 @@ jobs:
         run: | # Создаём новый блок с информацией о коммите
           echo "" >> README.md
           echo "---" >> README.md
-          echo "**Last commit:** ${{ steps.commit.outputs.hash }} - ${{ steps.commit.outputs.message }}" >> README.md
+          echo "**Last commit:** $'\n'-${{ steps.commit.outputs.hash }} - ${{ steps.commit.outputs.message }}" >> README.md
           echo "*(auto-updated)*" >> README.md
       #- name: Append commit info to README.md
         #run: |
