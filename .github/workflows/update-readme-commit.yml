@@ -6,8 +6,8 @@ on:
       - main
     paths-ignore:
       - 'README.md'
-      - 'Обработки'
-      - '.github'
+      - 'Обработки/**'
+      - '.github/**'
 
 jobs:
   update-readme:
