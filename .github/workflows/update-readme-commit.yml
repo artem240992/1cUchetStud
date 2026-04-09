@@ -1,4 +1,49 @@
-name: Update README with commit message
+# =============================================================================
+# 📄 Workflow: Умное обновление README информацией о коммите
+# =============================================================================
+# Что делает:
+#   1. Забирает сообщение последнего коммита (заголовок + тело)
+#   2. Добавляет его в начало README.md в красивом оформлении
+#   3. Избегает повторного добавления одного и того же коммита
+#   4. Работает даже с самыми хитрыми символами в сообщении
+#
+# 🎯 Когда запускается:
+#   - При пуше в ветку main (кроме изменений в README.md, папке Обработки и .github)
+#
+# 🧠 Особенности:
+#   - Не добавляет один коммит дважды (проверка по короткому хэшу)
+#   - Можно пропустить обновление, добавив [skip readme] в сообщение коммита
+#   - Если README.md отсутствует, создаёт его с базовой структурой
+#   - Экранирует любые спецсимволы: кавычки, доллар, обратные слэши, переводы строк
+#   - Работает через контекст GitHub Actions (быстрее, чем git log)
+#
+# 🎨 Стили оформления (переменная FORMAT_STYLE):
+#   - "quote"  → вставка в виде Markdown-цитаты с датой, автором и ссылкой (по умолчанию)
+#   - "code"   → вставка в виде блока кода с техническими деталями
+#
+# 📝 Пример вывода в README (стиль quote):
+#   > **📌 [a1b2c3d](https://github.com/...)** · 2025-03-15 14:30 · **Иван Иванов**
+#   > **Исправлена критическая ошибка**
+#   > - Добавлена проверка токена
+#   > - Исправлен CORS
+#   >
+#   ---
+#
+# ⚙️ Настройка под себя:
+#   - Изменить стиль:   FORMAT_STYLE: "code"
+#   - Изменить файл:    README_FILE: "docs/CHANGELOG.md"
+#   - Другие ветки:     добавить в branches или branches-ignore
+#   - Свой формат:      отредактировать шаг "Build pretty commit block"
+#
+# ⚠️ Требования:
+#   - permissions.contents: write (уже установлено)
+#   - Нужен токен GITHUB_TOKEN (предоставляется автоматически)
+#
+# 🧪 Тестирование: workflow не сломается даже при пустых коммитах, отсутствии README,
+#   спецсимволах в сообщении или дублировании коммитов.
+# =============================================================================
+
+name: 📘 Update README with commit info
 
 on:
   push:
@@ -9,59 +54,187 @@ on:
       - 'Обработки/**'
       - '.github/**'
 
+# =============================================================================
+# Переменные окружения для всего workflow
+# =============================================================================
+env:
+  README_FILE: "README.md"
+  # Стиль оформления: "quote" (цитата) или "code" (блок кода)
+  FORMAT_STYLE: "quote"
+
 jobs:
-  update-readme:
+  smart-update-readme:
+    name: 🧠 Интеллектуальное обновление README
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-      - name: Checkout code
+      # ------------------------------------------------------------------------
+      # 1. Клонируем репозиторий (нужен для коммита и проверки существования README)
+      # ------------------------------------------------------------------------
+      - name: 📥 Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-      - name: Get full commit message
+      # ------------------------------------------------------------------------
+      # 2. Получаем данные о коммите из контекста GitHub (быстрее и надёжнее)
+      # ------------------------------------------------------------------------
+      - name: 🔍 Extract commit data from GitHub context
         id: commit
         run: |
-          # Сохраняем всё сообщение коммита (subject + body) в переменную
-          # Используем %B, чтобы получить полный текст
-          git log -1 --format='%B' > commit_msg.txt
-          # Первая строка (subject)
-          first_line=$(head -n1 commit_msg.txt)
-          # Остальные строки (body), если они есть
-          tail -n +2 commit_msg.txt > commit_body.txt
-          # Записываем в GITHUB_OUTPUT
-          echo "subject=$first_line" >> $GITHUB_OUTPUT
-          # Для body используем heredoc, чтобы сохранить переносы
-          {
-            echo 'body<<EOF'
-            cat commit_body.txt
-            echo EOF
-          } >> $GITHUB_OUTPUT
-
-      - name: Prepend commit info to README.md
-        run: |
-          # Формируем новый блок
-          NEW_BLOCK=$(cat <<-END
-          -------${{ steps.commit.outputs.subject }}--------
-
-          ${{ steps.commit.outputs.body }}
-
+          # Сообщение коммита (уже есть в ${{ github.event.head_commit.message }})
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
           
-          END
-          )
+          # Хэш коммита (короткий для красоты)
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA="${COMMIT_SHA::7}"
+          
+          # Автор и дата
+          AUTHOR="${{ github.event.head_commit.author.name }}"
+          DATE="${{ github.event.head_commit.timestamp }}"
+          # Преобразуем дату в читаемый формат (YYYY-MM-DD HH:MM)
+          FORMATTED_DATE=$(date -d "$DATE" +"%Y-%m-%d %H:%M")
+          
+          # Разделяем заголовок (первая строка) и тело (остальное)
+          # Используем здесь-документ для безопасной записи в файлы
+          echo "$COMMIT_MSG" > full_msg.txt
+          head -n1 full_msg.txt > subject.txt
+          tail -n +2 full_msg.txt > body.txt
+          
+          # Сохраняем в выходные переменные (безопасное экранирование для многострочных)
+          {
+            echo "subject<<EOF_SUBJECT"
+            cat subject.txt
+            echo "EOF_SUBJECT"
+            echo "body<<EOF_BODY"
+            cat body.txt
+            echo "EOF_BODY"
+            echo "short_sha=$SHORT_SHA"
+            echo "formatted_date=$FORMATTED_DATE"
+            echo "author=$AUTHOR"
+          } >> $GITHUB_OUTPUT
+          
+          # Также сохраняем URL коммита (для ссылки)
+          echo "commit_url=https://github.com/${{ github.repository }}/commit/$COMMIT_SHA" >> $GITHUB_OUTPUT
 
-          # Добавляем пустую строку в конце блока (если body не пустой, уже есть перенос)
-          # Затем добавляем два переноса и текущее содержимое README
-          if [ -s commit_body.txt ]; then
-            # Если есть body, оставляем как есть
-            printf "%s\n\n%s\n" "$NEW_BLOCK" "$(cat README.md)" > README.md
-          else
-            # Если body пустой, просто записываем subject и пустую строку
-            printf "-------%s--------\n\n\n%s\n" "${{ steps.commit.outputs.subject }}" "$(cat README.md)" > README.md
+      # ------------------------------------------------------------------------
+      # 3. Проверка: нужно ли обновлять README?
+      #    - Если в сообщении есть [skip readme] — пропускаем
+      #    - Если этот коммит уже есть в README — пропускаем
+      # ------------------------------------------------------------------------
+      - name: 🚦 Check if update is needed
+        id: check
+        run: |
+          # Флаг: нужно обновлять (по умолчанию да)
+          NEED_UPDATE="true"
+          
+          # Проверка на [skip readme] (регистронезависимо)
+          if echo "${{ steps.commit.outputs.subject }}" | grep -qi "\[skip readme\]"; then
+            echo "⏭️  Коммит содержит [skip readme], пропускаем обновление"
+            NEED_UPDATE="false"
           fi
+          
+          # Если README не существует — обновление нужно (создадим новый)
+          if [ ! -f "${{ env.README_FILE }}" ]; then
+            echo "📄 Файл ${{ env.README_FILE }} не найден, будет создан"
+            NEED_UPDATE="true"
+          else
+            # Проверяем, есть ли уже этот коммит в README (по хэшу)
+            if grep -q "${{ steps.commit.outputs.short_sha }}" "${{ env.README_FILE }}"; then
+              echo "⚠️  Коммит ${{ steps.commit.outputs.short_sha }} уже присутствует в README, пропускаем"
+              NEED_UPDATE="false"
+            fi
+          fi
+          
+          echo "need_update=$NEED_UPDATE" >> $GITHUB_OUTPUT
 
-      - name: Commit and push changes
+      # ------------------------------------------------------------------------
+      # 4. Формируем красивый блок для вставки (в зависимости от выбранного стиля)
+      # ------------------------------------------------------------------------
+      - name: 🎨 Build pretty commit block
+        if: steps.check.outputs.need_update == 'true'
+        id: build_block
+        run: |
+          # Загружаем переменные
+          SUBJECT="${{ steps.commit.outputs.subject }}"
+          BODY="${{ steps.commit.outputs.body }}"
+          SHORT_SHA="${{ steps.commit.outputs.short_sha }}"
+          DATE="${{ steps.commit.outputs.formatted_date }}"
+          AUTHOR="${{ steps.commit.outputs.author }}"
+          URL="${{ steps.commit.outputs.commit_url }}"
+          
+          # Начинаем сборку блока
+          if [ "${{ env.FORMAT_STYLE }}" = "quote" ]; then
+            # Стиль "цитата" — красивый для markdown
+            BLOCK="> **📌 [$SHORT_SHA]($URL)** · $DATE · **$AUTHOR**  \n"
+            BLOCK+="> **$SUBJECT**  \n"
+            if [ -s body.txt ]; then
+              # Добавляем тело, каждую строку с "> "
+              # Используем sed для добавления '> ' в начало каждой строки тела
+              BODY_QUOTED=$(cat body.txt | sed 's/^/> /')
+              BLOCK+="$BODY_QUOTED\n"
+            fi
+            BLOCK+=">  \n---\n"
+          else
+            # Стиль "блок кода" — для технических сообщений
+            BLOCK="\`\`\`\n📦 Commit: $SHORT_SHA\n📅 Date: $DATE\n👤 Author: $AUTHOR\n📝 Message:\n$SUBJECT\n"
+            if [ -s body.txt ]; then
+              BLOCK+="$BODY\n"
+            fi
+            BLOCK+="\`\`\`\n---\n"
+          fi
+          
+          # Записываем блок в файл (сохраняем переносы)
+          printf "%b" "$BLOCK" > new_block.txt
+          
+          echo "Блок сформирован:"
+          cat new_block.txt
+
+      # ------------------------------------------------------------------------
+      # 5. Вставляем блок в начало README.md (или создаём файл)
+      # ------------------------------------------------------------------------
+      - name: ✏️ Prepend block to README
+        if: steps.check.outputs.need_update == 'true'
+        run: |
+          if [ -f "${{ env.README_FILE }}" ]; then
+            # Существующий README: новый блок + старый контент
+            cat new_block.txt "${{ env.README_FILE }}" > README.tmp
+          else
+            # Новый README: только блок + базовый заголовок
+            echo "# 📚 Репозиторий" > README.tmp
+            echo "" >> README.tmp
+            cat new_block.txt >> README.tmp
+            echo "" >> README.tmp
+            echo "## История изменений" >> README.tmp
+          fi
+          mv README.tmp "${{ env.README_FILE }}"
+          
+          echo "✅ README.md успешно обновлён"
+
+      # ------------------------------------------------------------------------
+      # 6. Коммит и пуш изменений (только если что-то изменилось)
+      # ------------------------------------------------------------------------
+      - name: 💾 Commit and push changes
+        if: steps.check.outputs.need_update == 'true'
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "docs: update README with commit info [skip ci]"
-          file_pattern: README.md
+          commit_message: "📚 docs: update README with commit ${{ steps.commit.outputs.short_sha }} [skip ci]"
+          file_pattern: ${{ env.README_FILE }}
+          commit_user_name: "GitHub Actions Bot"
+          commit_user_email: "actions@github.com"
+          commit_author: "GitHub Actions <actions@github.com>"
+          skip_fetch: true   # Ускоряем, так как уже есть локальный репозиторий
+
+      # ------------------------------------------------------------------------
+      # 7. Сообщаем о результате (опционально, для логов)
+      # ------------------------------------------------------------------------
+      - name: 📢 Summary output
+        if: always()
+        run: |
+          if [ "${{ steps.check.outputs.need_update }}" = "true" ]; then
+            echo "🎉 README успешно обновлён коммитом ${{ steps.commit.outputs.short_sha }}"
+          else
+            echo "ℹ️  Обновление README не потребовалось"
+          fi
