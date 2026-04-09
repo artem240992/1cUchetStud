@@ -95,13 +95,12 @@ jobs:
           SUBJECT=$(cat subject.txt)
           
           if [ "${{ env.FORMAT_STYLE }}" = "quote" ]; then
-            BLOCK="> **📌 [$SHORT_SHA]($URL)** · **$AUTHOR**  \n"
-            BLOCK+="> **$SUBJECT**  \n"
+            BLOCK="\n -------📌 SUBJECT 📌 ------- \n"
             if [ -s body.txt ]; then
-              BODY_QUOTED=$(sed 's/^/> /' body.txt)
+              BODY_QUOTED=$(sed 's/^/' body.txt)
               BLOCK+="$BODY_QUOTED\n"
             fi
-            BLOCK+=">  \n---\n"
+            BLOCK+="  \n---\n"
           else
             BLOCK="\`\`\`\n📦 Commit: $SHORT_SHA\n👤 Author: $AUTHOR\n📝 Message:\n$SUBJECT\n"
             if [ -s body.txt ]; then
