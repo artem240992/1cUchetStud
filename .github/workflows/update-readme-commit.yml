@@ -149,7 +149,7 @@ jobs:
               # Добавляем тело без изменений (без добавления >)
               BLOCK+="$(cat body.txt)\n"
             fi
-            BLOCK+="\n\n\n"
+            BLOCK+="\n---\n"
           else
             BLOCK="\`\`\`\n📦 Commit: $SHORT_SHA\n👤 Author: $AUTHOR\n📝 Message:\n$SUBJECT\n"
             if [ -s body.txt ]; then
