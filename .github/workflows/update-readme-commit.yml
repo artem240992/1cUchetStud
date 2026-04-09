@@ -18,11 +18,11 @@
 #   - Работает через контекст GitHub Actions (быстрее, чем git log)
 #
 # 🎨 Стили оформления (переменная FORMAT_STYLE):
-#   - "quote"  → вставка в виде Markdown-цитаты с датой, автором и ссылкой (по умолчанию)
+#   - "quote"  → вставка в виде Markdown-цитаты с автором и ссылкой (по умолчанию)
 #   - "code"   → вставка в виде блока кода с техническими деталями
 #
 # 📝 Пример вывода в README (стиль quote):
-#   > **📌 [a1b2c3d](https://github.com/...)** · 2025-03-15 14:30 · **Иван Иванов**
+#   > **📌 [a1b2c3d](https://github.com/...)** · **Иван Иванов**
 #   > **Исправлена критическая ошибка**
 #   > - Добавлена проверка токена
 #   > - Исправлен CORS
@@ -91,11 +91,8 @@ jobs:
           COMMIT_SHA="${{ github.sha }}"
           SHORT_SHA="${COMMIT_SHA::7}"
           
-          # Автор и дата
+          # Автор
           AUTHOR="${{ github.event.head_commit.author.name }}"
-          DATE="${{ github.event.head_commit.timestamp }}"
-          # Преобразуем дату в читаемый формат (YYYY-MM-DD HH:MM)
-          FORMATTED_DATE=$(date -d "$DATE" +"%Y-%m-%d %H:%M")
           
           # Разделяем заголовок (первая строка) и тело (остальное)
           # Используем здесь-документ для безопасной записи в файлы
@@ -112,7 +109,6 @@ jobs:
             cat body.txt
             echo "EOF_BODY"
             echo "short_sha=$SHORT_SHA"
-            echo "formatted_date=$FORMATTED_DATE"
             echo "author=$AUTHOR"
           } >> $GITHUB_OUTPUT
           
@@ -161,25 +157,23 @@ jobs:
           SUBJECT="${{ steps.commit.outputs.subject }}"
           BODY="${{ steps.commit.outputs.body }}"
           SHORT_SHA="${{ steps.commit.outputs.short_sha }}"
-          DATE="${{ steps.commit.outputs.formatted_date }}"
           AUTHOR="${{ steps.commit.outputs.author }}"
           URL="${{ steps.commit.outputs.commit_url }}"
           
           # Начинаем сборку блока
           if [ "${{ env.FORMAT_STYLE }}" = "quote" ]; then
-            # Стиль "цитата" — красивый для markdown
-            BLOCK="> **📌 [$SHORT_SHA]($URL)** · $DATE · **$AUTHOR**  \n"
+            # Стиль "цитата" — красивый для markdown (без даты)
+            BLOCK="> **📌 [$SHORT_SHA]($URL)** · **$AUTHOR**  \n"
             BLOCK+="> **$SUBJECT**  \n"
             if [ -s body.txt ]; then
               # Добавляем тело, каждую строку с "> "
-              # Используем sed для добавления '> ' в начало каждой строки тела
               BODY_QUOTED=$(cat body.txt | sed 's/^/> /')
               BLOCK+="$BODY_QUOTED\n"
             fi
             BLOCK+=">  \n---\n"
           else
-            # Стиль "блок кода" — для технических сообщений
-            BLOCK="\`\`\`\n📦 Commit: $SHORT_SHA\n📅 Date: $DATE\n👤 Author: $AUTHOR\n📝 Message:\n$SUBJECT\n"
+            # Стиль "блок кода" — для технических сообщений (без даты)
+            BLOCK="\`\`\`\n📦 Commit: $SHORT_SHA\n👤 Author: $AUTHOR\n📝 Message:\n$SUBJECT\n"
             if [ -s body.txt ]; then
               BLOCK+="$BODY\n"
             fi
