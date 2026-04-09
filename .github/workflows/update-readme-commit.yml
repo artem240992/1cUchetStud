@@ -1,107 +1,67 @@
-# ============================================================
-# 📝 Workflow: Обновление README информацией о коммите
-# ============================================================
-# Этот workflow автоматически добавляет в начало README.md
-# сообщение последнего коммита (заголовок и тело).
-# Запускается при пуше в main (кроме изменений в README,
-# папке Обработки и .github).
-# ============================================================
+name: Update README with commit message
 
-name: 📄 Update README with commit message
-
-# ------------------------------------------------------------
-# 🚀 Триггеры запуска
-# ------------------------------------------------------------
 on:
   push:
     branches:
-      - main                      # Только ветка main
-    paths-ignore:                 # Игнорируем изменения в:
-      - 'README.md'               #   самом README (избегаем циклов)
-      - 'Обработки/**'            #   служебных обработках
-      - '.github/**'              #   настройках GitHub Actions
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'Обработки/**'
+      - '.github/**'
 
-# ------------------------------------------------------------
-# 🧩 Определение задачи
-# ------------------------------------------------------------
 jobs:
   update-readme:
-    name: 🔄 Обновление README.md
     runs-on: ubuntu-latest
     permissions:
-      contents: write             # Разрешаем запись в репозиторий
+      contents: write
 
-    # --------------------------------------------------------
-    # 📋 Шаги выполнения
-    # --------------------------------------------------------
     steps:
-      # 1️⃣ Клонирование репозитория
-      - name: 📥 Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1          # Только последний коммит (экономия времени)
 
-      # 2️⃣ Извлечение полного сообщения последнего коммита
-      - name: 🔍 Get full commit message
-        id: commit                # ID для доступа к выходам
+      - name: Get full commit message
+        id: commit
         run: |
-          # --- Сохраняем полный текст коммита (заголовок + тело) ---
+          # Сохраняем всё сообщение коммита (subject + body) в переменную
+          # Используем %B, чтобы получить полный текст
           git log -1 --format='%B' > commit_msg.txt
-          
-          # --- Извлекаем заголовок (первая строка) ---
+          # Первая строка (subject)
           first_line=$(head -n1 commit_msg.txt)
-          
-          # --- Извлекаем тело (все остальные строки) ---
+          # Остальные строки (body), если они есть
           tail -n +2 commit_msg.txt > commit_body.txt
-          
-          # --- Записываем заголовок в выходную переменную ---
+          # Записываем в GITHUB_OUTPUT
           echo "subject=$first_line" >> $GITHUB_OUTPUT
-          
-          # --- Сохраняем тело с сохранением переносов строк (heredoc) ---
+          # Для body используем heredoc, чтобы сохранить переносы
           {
             echo 'body<<EOF'
             cat commit_body.txt
             echo EOF
           } >> $GITHUB_OUTPUT
 
-      # 3️⃣ Добавление информации о коммите в начало README.md
-      - name: ✏️ Prepend commit info to README
+      - name: Prepend commit info to README.md
         run: |
-          # --- Формируем красивый блок с рамкой ---
+          # Формируем новый блок
+          NEW_BLOCK=$(cat <<-END
+          -------${{ steps.commit.outputs.subject }}--------
+
+          ${{ steps.commit.outputs.body }}
+
+          
+          END
+          )
+
+          # Добавляем пустую строку в конце блока (если body не пустой, уже есть перенос)
+          # Затем добавляем два переноса и текущее содержимое README
           if [ -s commit_body.txt ]; then
-            # Если есть тело коммита, выводим его с разделителями
-            NEW_BLOCK=$(cat <<-END
-            ========================================
-            📌 ${{ steps.commit.outputs.subject }}
-            ========================================
-            
-            ${{ steps.commit.outputs.body }}
-            
-            ----------------------------------------
-            
-            END
-            )
-            # Записываем блок + существующее содержимое README
-            printf "%s\n%s\n" "$NEW_BLOCK" "$(cat README.md)" > README.md
+            # Если есть body, оставляем как есть
+            printf "%s\n\n%s\n" "$NEW_BLOCK" "$(cat README.md)" > README.md
           else
-            # Если только заголовок — компактный вариант
-            NEW_BLOCK=$(cat <<-END
-            ========================================
-            📌 ${{ steps.commit.outputs.subject }}
-            ========================================
-            
-            
-            END
-            )
-            printf "%s\n%s\n" "$NEW_BLOCK" "$(cat README.md)" > README.md
+            # Если body пустой, просто записываем subject и пустую строку
+            printf "-------%s--------\n\n\n%s\n" "${{ steps.commit.outputs.subject }}" "$(cat README.md)" > README.md
           fi
 
-      # 4️⃣ Коммит и пуш изменений обратно в репозиторий
-      - name: 💾 Commit and push changes
+      - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "📚 docs: update README with commit info [skip ci]"
+          commit_message: "docs: update README with commit info [skip ci]"
           file_pattern: README.md
-          commit_user_name: "GitHub Actions Bot"
-          commit_user_email: "actions@github.com"
-          commit_author: "GitHub Actions <actions@github.com>"
