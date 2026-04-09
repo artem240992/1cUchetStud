@@ -144,7 +144,7 @@ jobs:
           
           if [ "${{ env.FORMAT_STYLE }}" = "quote" ]; then
             # Блок без символов > и без ** (простой текст)
-            BLOCK="-------📌 $SUBJECT_AUTHOR: $AUTHOR-------  \n"
+            BLOCK="-------📌 $SUBJECT _AUTHOR: $AUTHOR-------  \n"
             if [ -s body.txt ]; then
               # Добавляем тело без изменений (без добавления >)
               BLOCK+="$(cat body.txt)\n"
