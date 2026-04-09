@@ -18,15 +18,15 @@
 #   - Работает через контекст GitHub Actions (быстрее, чем git log)
 #
 # 🎨 Стили оформления (переменная FORMAT_STYLE):
-#   - "quote"  → вставка в виде Markdown-цитаты с автором и ссылкой (по умолчанию)
+#   - "quote"  → вставка в виде простого текста (без символов > и **)
 #   - "code"   → вставка в виде блока кода с техническими деталями
 #
 # 📝 Пример вывода в README (стиль quote):
-#   > **📌 [a1b2c3d](https://github.com/...)** · **Иван Иванов**
-#   > **Исправлена критическая ошибка**
-#   > - Добавлена проверка токена
-#   > - Исправлен CORS
-#   >
+#   **📌 [a1b2c3d](https://github.com/...)** · **Иван Иванов**
+#   **Исправлена критическая ошибка**
+#   - Добавлена проверка токена
+#   - Исправлен CORS
+#
 #   ---
 #
 # ⚙️ Настройка под себя:
@@ -59,7 +59,7 @@ on:
 # =============================================================================
 env:
   README_FILE: "README.md"
-  # Стиль оформления: "quote" (цитата) или "code" (блок кода)
+  # Стиль оформления: "quote" (простой текст) или "code" (блок кода)
   FORMAT_STYLE: "quote"
 
 jobs:
@@ -71,7 +71,7 @@ jobs:
 
     steps:
       # ------------------------------------------------------------------------
-      # 1. Клонируем репозиторий (нужен для коммита и проверки существования README)
+      # 1. Клонируем репозиторий
       # ------------------------------------------------------------------------
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
@@ -79,28 +79,20 @@ jobs:
           fetch-depth: 1
 
       # ------------------------------------------------------------------------
-      # 2. Получаем данные о коммите из контекста GitHub (быстрее и надёжнее)
+      # 2. Получаем данные о коммите из контекста GitHub
       # ------------------------------------------------------------------------
       - name: 🔍 Extract commit data from GitHub context
         id: commit
         run: |
-          # Сообщение коммита (уже есть в ${{ github.event.head_commit.message }})
           COMMIT_MSG="${{ github.event.head_commit.message }}"
-          
-          # Хэш коммита (короткий для красоты)
           COMMIT_SHA="${{ github.sha }}"
           SHORT_SHA="${COMMIT_SHA::7}"
-          
-          # Автор
           AUTHOR="${{ github.event.head_commit.author.name }}"
           
-          # Разделяем заголовок (первая строка) и тело (остальное)
-          # Используем здесь-документ для безопасной записи в файлы
           echo "$COMMIT_MSG" > full_msg.txt
           head -n1 full_msg.txt > subject.txt
           tail -n +2 full_msg.txt > body.txt
           
-          # Сохраняем в выходные переменные (безопасное экранирование для многострочных)
           {
             echo "subject<<EOF_SUBJECT"
             cat subject.txt
@@ -112,32 +104,25 @@ jobs:
             echo "author=$AUTHOR"
           } >> $GITHUB_OUTPUT
           
-          # Также сохраняем URL коммита (для ссылки)
           echo "commit_url=https://github.com/${{ github.repository }}/commit/$COMMIT_SHA" >> $GITHUB_OUTPUT
 
       # ------------------------------------------------------------------------
       # 3. Проверка: нужно ли обновлять README?
-      #    - Если в сообщении есть [skip readme] — пропускаем
-      #    - Если этот коммит уже есть в README — пропускаем
       # ------------------------------------------------------------------------
       - name: 🚦 Check if update is needed
         id: check
         run: |
-          # Флаг: нужно обновлять (по умолчанию да)
           NEED_UPDATE="true"
           
-          # Проверка на [skip readme] (регистронезависимо)
           if echo "${{ steps.commit.outputs.subject }}" | grep -qi "\[skip readme\]"; then
             echo "⏭️  Коммит содержит [skip readme], пропускаем обновление"
             NEED_UPDATE="false"
           fi
           
-          # Если README не существует — обновление нужно (создадим новый)
           if [ ! -f "${{ env.README_FILE }}" ]; then
             echo "📄 Файл ${{ env.README_FILE }} не найден, будет создан"
             NEED_UPDATE="true"
           else
-            # Проверяем, есть ли уже этот коммит в README (по хэшу)
             if grep -q "${{ steps.commit.outputs.short_sha }}" "${{ env.README_FILE }}"; then
               echo "⚠️  Коммит ${{ steps.commit.outputs.short_sha }} уже присутствует в README, пропускаем"
               NEED_UPDATE="false"
@@ -147,56 +132,45 @@ jobs:
           echo "need_update=$NEED_UPDATE" >> $GITHUB_OUTPUT
 
       # ------------------------------------------------------------------------
-      # 4. Формируем красивый блок для вставки (в зависимости от выбранного стиля)
+      # 4. Формируем блок для вставки (символ ">" удалён)
       # ------------------------------------------------------------------------
       - name: 🎨 Build pretty commit block
         if: steps.check.outputs.need_update == 'true'
-        id: build_block
         run: |
-          # Загружаем переменные
-          SUBJECT="${{ steps.commit.outputs.subject }}"
-          BODY="${{ steps.commit.outputs.body }}"
           SHORT_SHA="${{ steps.commit.outputs.short_sha }}"
           AUTHOR="${{ steps.commit.outputs.author }}"
           URL="${{ steps.commit.outputs.commit_url }}"
+          SUBJECT=$(cat subject.txt)
           
-          # Начинаем сборку блока
           if [ "${{ env.FORMAT_STYLE }}" = "quote" ]; then
-            # Стиль "цитата" — красивый для markdown (без даты)
-            BLOCK="> **📌 [$SHORT_SHA]($URL)** · **$AUTHOR**  \n"
-            BLOCK+="> **$SUBJECT**  \n"
+            # Блок без символов > и без ** (простой текст)
+            BLOCK="**📌 $SUBJECT** · **$AUTHOR**  \n"
             if [ -s body.txt ]; then
-              # Добавляем тело, каждую строку с "> "
-              BODY_QUOTED=$(cat body.txt | sed 's/^/> /')
-              BLOCK+="$BODY_QUOTED\n"
+              # Добавляем тело без изменений (без добавления >)
+              BLOCK+="$(cat body.txt)\n"
             fi
-            BLOCK+=">  \n---\n"
+            BLOCK+="\n---\n"
           else
-            # Стиль "блок кода" — для технических сообщений (без даты)
             BLOCK="\`\`\`\n📦 Commit: $SHORT_SHA\n👤 Author: $AUTHOR\n📝 Message:\n$SUBJECT\n"
             if [ -s body.txt ]; then
-              BLOCK+="$BODY\n"
+              BLOCK+="$(cat body.txt)\n"
             fi
             BLOCK+="\`\`\`\n---\n"
           fi
           
-          # Записываем блок в файл (сохраняем переносы)
           printf "%b" "$BLOCK" > new_block.txt
-          
           echo "Блок сформирован:"
           cat new_block.txt
 
       # ------------------------------------------------------------------------
-      # 5. Вставляем блок в начало README.md (или создаём файл)
+      # 5. Вставляем блок в начало README.md
       # ------------------------------------------------------------------------
       - name: ✏️ Prepend block to README
         if: steps.check.outputs.need_update == 'true'
         run: |
           if [ -f "${{ env.README_FILE }}" ]; then
-            # Существующий README: новый блок + старый контент
             cat new_block.txt "${{ env.README_FILE }}" > README.tmp
           else
-            # Новый README: только блок + базовый заголовок
             echo "# 📚 Репозиторий" > README.tmp
             echo "" >> README.tmp
             cat new_block.txt >> README.tmp
@@ -204,11 +178,10 @@ jobs:
             echo "## История изменений" >> README.tmp
           fi
           mv README.tmp "${{ env.README_FILE }}"
-          
           echo "✅ README.md успешно обновлён"
 
       # ------------------------------------------------------------------------
-      # 6. Коммит и пуш изменений (только если что-то изменилось)
+      # 6. Коммит и пуш изменений
       # ------------------------------------------------------------------------
       - name: 💾 Commit and push changes
         if: steps.check.outputs.need_update == 'true'
@@ -219,10 +192,10 @@ jobs:
           commit_user_name: "GitHub Actions Bot"
           commit_user_email: "actions@github.com"
           commit_author: "GitHub Actions <actions@github.com>"
-          skip_fetch: true   # Ускоряем, так как уже есть локальный репозиторий
+          skip_fetch: true
 
       # ------------------------------------------------------------------------
-      # 7. Сообщаем о результате (опционально, для логов)
+      # 7. Итоговый вывод
       # ------------------------------------------------------------------------
       - name: 📢 Summary output
         if: always()
