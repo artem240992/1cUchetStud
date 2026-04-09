@@ -1,3 +1,6 @@
+-------📌 Create jobConfiguration.json _AUTHOR: Artem 📌------- 
+
+---
 -------📌 Create Jenkinsfile _AUTHOR: Artem 📌------- 
 
 ---
