@@ -1,12 +1,3 @@
--------📌 Update Jenkinsfile _AUTHOR: Artem 📌------- 
-
----
--------📌 Create jobConfiguration.json _AUTHOR: Artem 📌------- 
-
----
--------📌 Create Jenkinsfile _AUTHOR: Artem 📌------- 
-
----
 -------📌 1.9.9.3· a.zhuravel------- 
 
 Добавлено РЗ СозданиеДокументаОплата. В следующих релизах планируется:
