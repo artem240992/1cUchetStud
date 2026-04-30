@@ -1,3 +1,6 @@
+-------📌 Merge branch 'main' of https://github.com/artem240992/1cUchetStud _AUTHOR: a.zhuravel 📌------- 
+
+---
 -------📌 РАсшир _AUTHOR: a.zhuravel 📌------- 
 
 ---
