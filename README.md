@@ -1,3 +1,6 @@
+-------📌 Merge branch 'main' of https://github.com/artem240992/1cUchetStud _AUTHOR: a.zhuravel 📌------- 
+
+---
 -------📌 1.9.9.6 _AUTHOR: a.zhuravel 📌------- 
 
 Добавлена возможность печати акта работ через документ Оплата.
